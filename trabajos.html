@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>App de Trabajos</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
+    .card { background: white; padding: 10px; margin-bottom: 10px; border-radius: 10px; }
+    input, textarea, button { display: block; margin-top: 5px; width: 100%; padding: 5px; margin-bottom: 10px; }
+    .oculto { display: none; }
+    .boton { background: #4caf50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    .boton:hover { background: #45a049; }
+  </style>
+</head>
+<body>
+  <h1>Login</h1>
+  <input type="text" id="usuario" placeholder="Usuario">
+  <input type="password" id="contrasena" placeholder="Contraseña">
+  <button class="boton" onclick="login()">Entrar</button>
+
+  <div id="app" class="oculto">
+    <h2 id="bienvenida"></h2>
+
+    <div id="adminPanel" class="oculto">
+      <h3>Crear trabajo</h3>
+      <input id="codigo" placeholder="Código">
+      <input id="ubicacion" placeholder="Ubicación">
+      <textarea id="descripcion" placeholder="Descripción del trabajo"></textarea>
+      <button class="boton" onclick="crearTrabajo()">Asignar trabajo</button>
+    </div>
+
+    <h3>Lista de trabajos</h3>
+    <div id="listaTrabajos"></div>
+  </div>
+
+  <script>
+    let usuarioLogueado = '';
+    let rol = '';
+    let trabajos = JSON.parse(localStorage.getItem('trabajos') || '[]');
+
+    function login() {
+      const usuario = document.getElementById('usuario').value;
+      const pass = document.getElementById('contrasena').value;
+      if (usuario === 'admin' && pass === '1234') {
+        rol = 'admin';
+      } else if (usuario === 'trabajador' && pass === '123') {
+        rol = 'trabajador';
+      } else {
+        alert('Usuario o contraseña incorrectos');
+        return;
+      }
+
+      usuarioLogueado = usuario;
+      document.getElementById('app').classList.remove('oculto');
+      document.querySelector('h1').classList.add('oculto');
+      document.getElementById('usuario').classList.add('oculto');
+      document.getElementById('contrasena').classList.add('oculto');
+      document.querySelector('button').classList.add('oculto');
+      document.getElementById('bienvenida').innerText = `Bienvenido ${usuario}`;
+      if (rol === 'admin') document.getElementById('adminPanel').classList.remove('oculto');
+      mostrarTrabajos();
+    }
+
+    function crearTrabajo() {
+      const nuevo = {
+        codigo: document.getElementById('codigo').value,
+        ubicacion: document.getElementById('ubicacion').value,
+        descripcion: document.getElementById('descripcion').value,
+        desplegado: false,
+        finalizado: false,
+        cita: '',
+        reporte: '',
+        fotos: []
+      };
+      trabajos.push(nuevo);
+      guardar();
+      mostrarTrabajos();
+      document.getElementById('codigo').value = '';
+      document.getElementById('ubicacion').value = '';
+      document.getElementById('descripcion').value = '';
+    }
+
+    function guardar() {
+      localStorage.setItem('trabajos', JSON.stringify(trabajos));
+    }
+
+    function mostrarTrabajos() {
+      const cont = document.getElementById('listaTrabajos');
+      cont.innerHTML = '';
+      trabajos.forEach((t, i) => {
+        if (rol === 'trabajador' && t.finalizado) return;
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+          <b>Código:</b> ${t.codigo}<br>
+          <b>Ubicación:</b> ${t.ubicacion}<br>
+          ${t.desplegado ? `<b>Descripción:</b> ${t.descripcion}<br>` : ''}
+          ${rol === 'trabajador' && !t.finalizado ? `
+            <button class="boton" onclick="toggle(${i})">${t.desplegado ? 'Ocultar' : 'Mostrar más'}</button>
+            <label>Fecha y hora:</label>
+            <input type="datetime-local" onchange="trabajos[${i}].cita = this.value; guardar();">
+            <label>Trabajo realizado:</label>
+            <textarea onchange="trabajos[${i}].reporte = this.value; guardar();"></textarea>
+            <label>Fotos:</label>
+            <input type="file" multiple onchange="guardarFotos(event, ${i})">
+            <button class="boton" onclick="finalizar(${i})">Finalizar</button>
+          ` : ''}
+          ${rol === 'admin' && t.finalizado ? `
+            <b>Cita:</b> ${t.cita}<br>
+            <b>Reporte:</b> ${t.reporte}<br>
+            <b>Fotos:</b> ${t.fotos.join(', ')}<br>
+            <button class="boton" onclick="eliminar(${i})">Eliminar parte</button>
+          ` : ''}
+        `;
+        cont.appendChild(div);
+      });
+    }
+
+    function toggle(i) {
+      trabajos[i].desplegado = !trabajos[i].desplegado;
+      guardar();
+      mostrarTrabajos();
+    }
+
+    function finalizar(i) {
+      trabajos[i].finalizado = true;
+      guardar();
+      mostrarTrabajos();
+    }
+
+    function eliminar(i) {
+      trabajos.splice(i, 1);
+      guardar();
+      mostrarTrabajos();
+    }
+
+    function guardarFotos(e, i) {
+      const files = Array.from(e.target.files).map(f => f.name);
+      trabajos[i].fotos = files;
+      guardar();
+    }
+  </script>
+</body>
+</html>
