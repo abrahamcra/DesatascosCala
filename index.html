@@ -33,12 +33,28 @@
     <div id="listaTrabajos"></div>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB67mekTQnau2afjW8-1ZAC3FbNT1frkic",
+      authDomain: "webcala-40614.firebaseapp.com",
+      projectId: "webcala-40614",
+      storageBucket: "webcala-40614.appspot.com",
+      messagingSenderId: "767522055782",
+      appId: "1:767522055782:web:6aeeff70f03b82e596efa7",
+      measurementId: "G-JYY26VF6PE"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
     let usuarioLogueado = '';
     let rol = '';
-    let trabajos = JSON.parse(localStorage.getItem('trabajos') || '[]');
+    let trabajos = [];
 
-    function login() {
+    async function login() {
       const usuario = document.getElementById('usuario').value;
       const pass = document.getElementById('contrasena').value;
       if (usuario === 'admin' && pass === '1234') {
@@ -49,7 +65,6 @@
         alert('Usuario o contraseña incorrectos');
         return;
       }
-
       usuarioLogueado = usuario;
       document.getElementById('app').classList.remove('oculto');
       document.querySelector('h1').classList.add('oculto');
@@ -58,10 +73,19 @@
       document.querySelector('button').classList.add('oculto');
       document.getElementById('bienvenida').innerText = `Bienvenido ${usuario}`;
       if (rol === 'admin') document.getElementById('adminPanel').classList.remove('oculto');
+      await cargarTrabajos();
+    }
+
+    async function cargarTrabajos() {
+      trabajos = [];
+      const querySnapshot = await getDocs(collection(db, "trabajos"));
+      querySnapshot.forEach((docSnap) => {
+        trabajos.push({ id: docSnap.id, ...docSnap.data() });
+      });
       mostrarTrabajos();
     }
 
-    function crearTrabajo() {
+    async function crearTrabajo() {
       const nuevo = {
         codigo: document.getElementById('codigo').value,
         ubicacion: document.getElementById('ubicacion').value,
@@ -72,16 +96,11 @@
         reporte: '',
         fotos: []
       };
-      trabajos.push(nuevo);
-      guardar();
-      mostrarTrabajos();
+      await addDoc(collection(db, "trabajos"), nuevo);
       document.getElementById('codigo').value = '';
       document.getElementById('ubicacion').value = '';
       document.getElementById('descripcion').value = '';
-    }
-
-    function guardar() {
-      localStorage.setItem('trabajos', JSON.stringify(trabajos));
+      await cargarTrabajos();
     }
 
     function mostrarTrabajos() {
@@ -98,17 +117,14 @@
           ${rol === 'trabajador' && !t.finalizado ? `
             <button class="boton" onclick="toggle(${i})">${t.desplegado ? 'Ocultar' : 'Mostrar más'}</button>
             <label>Fecha y hora:</label>
-            <input type="datetime-local" onchange="trabajos[${i}].cita = this.value; guardar();">
+            <input type="datetime-local" onchange="actualizarTrabajo(${i}, 'cita', this.value)">
             <label>Trabajo realizado:</label>
-            <textarea onchange="trabajos[${i}].reporte = this.value; guardar();"></textarea>
-            <label>Fotos:</label>
-            <input type="file" multiple onchange="guardarFotos(event, ${i})">
+            <textarea onchange="actualizarTrabajo(${i}, 'reporte', this.value)"></textarea>
             <button class="boton" onclick="finalizar(${i})">Finalizar</button>
           ` : ''}
           ${rol === 'admin' && t.finalizado ? `
             <b>Cita:</b> ${t.cita}<br>
             <b>Reporte:</b> ${t.reporte}<br>
-            <b>Fotos:</b> ${t.fotos.join(', ')}<br>
             <button class="boton" onclick="eliminar(${i})">Eliminar parte</button>
           ` : ''}
         `;
@@ -116,28 +132,26 @@
       });
     }
 
-    function toggle(i) {
+    window.toggle = async function(i) {
       trabajos[i].desplegado = !trabajos[i].desplegado;
-      guardar();
-      mostrarTrabajos();
+      await updateDoc(doc(db, "trabajos", trabajos[i].id), { desplegado: trabajos[i].desplegado });
+      cargarTrabajos();
     }
 
-    function finalizar(i) {
+    window.actualizarTrabajo = async function(i, campo, valor) {
+      trabajos[i][campo] = valor;
+      await updateDoc(doc(db, "trabajos", trabajos[i].id), { [campo]: valor });
+    }
+
+    window.finalizar = async function(i) {
       trabajos[i].finalizado = true;
-      guardar();
-      mostrarTrabajos();
+      await updateDoc(doc(db, "trabajos", trabajos[i].id), { finalizado: true });
+      cargarTrabajos();
     }
 
-    function eliminar(i) {
-      trabajos.splice(i, 1);
-      guardar();
-      mostrarTrabajos();
-    }
-
-    function guardarFotos(e, i) {
-      const files = Array.from(e.target.files).map(f => f.name);
-      trabajos[i].fotos = files;
-      guardar();
+    window.eliminar = async function(i) {
+      await deleteDoc(doc(db, "trabajos", trabajos[i].id));
+      cargarTrabajos();
     }
   </script>
 </body>
