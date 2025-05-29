@@ -54,7 +54,7 @@
     let rol = '';
     let trabajos = [];
 
-    async function login() {
+    window.login = async function() {
       const usuario = document.getElementById('usuario').value;
       const pass = document.getElementById('contrasena').value;
       if (usuario === 'admin' && pass === '1234') {
@@ -65,6 +65,7 @@
         alert('Usuario o contraseña incorrectos');
         return;
       }
+
       usuarioLogueado = usuario;
       document.getElementById('app').classList.remove('oculto');
       document.querySelector('h1').classList.add('oculto');
@@ -85,7 +86,7 @@
       mostrarTrabajos();
     }
 
-    async function crearTrabajo() {
+    window.crearTrabajo = async function() {
       const nuevo = {
         codigo: document.getElementById('codigo').value,
         ubicacion: document.getElementById('ubicacion').value,
